@@ -1,48 +1,37 @@
-# Reload message (Supports MiniMessage tags)
+# Reload messages (Supports MiniMessage tags)
 messages:
-  reload: "<green>ChatHeadTooltip configuration and styles reloaded successfully!"
+  reload: "<green>ChatHeadTooltip configuration reloaded successfully!"
   no-permission: "<red>You do not have permission to use this command."
 
-# To add a new style:
-# 1. Copy an existing block (like 'vip')
-# 2. Change the node name (e.g., 'mvp')
-# 3. Assign your custom permission and a unique weight.
 styles:
   admin:
     permission: "chatheadtooltip.style.admin"
     weight: 100
     tooltip-style: "my_pack:admin_style"
-    title: "<red><bold>[ADMIN] <player_name></bold></red>"
+    title: "<player_head> <red><bold>[ADMIN] <player_name></bold></red>"
     lore:
       - "<gray>Rank: <red>Administrator"
-      - "<gray>Health: <red><health>/20 HP"
+      - "<gray>Balance: <green>$%vault_eco_balance_formatted%"
+      - "<gray>Health: <red><health>/<max_health> HP"
       - "<gray>Ping: <green><ping>ms"
       - "<gray>World: <white><world>"
-
-  # Example of adding a new custom tier on the fly
-  mvp:
-    permission: "chatheadtooltip.style.mvp"
-    weight: 75
-    tooltip-style: "my_pack:mvp_style"
-    title: "<aqua><bold>[MVP] <player_name></bold></aqua>"
-    lore:
-      - "<gray>Rank: <aqua>MVP Player"
-      - "<gray>Health: <red><health>/20 HP"
 
   vip:
     permission: "chatheadtooltip.style.vip"
     weight: 50
     tooltip-style: "my_pack:vip_style"
-    title: "<gold><bold>[VIP] <player_name></bold></gold>"
+    title: "<player_head> <gold><bold>[VIP] <player_name></bold></gold>"
     lore:
       - "<gray>Rank: <gold>VIP"
-      - "<gray>Health: <red><health>/20 HP"
+      - "<gray>Balance: <green>$%vault_eco_balance_formatted%"
+      - "<gray>Health: <red><health>/<max_health> HP"
 
   default:
-    permission: "" # Empty string means accessible to everyone (fallback)
+    permission: ""
     weight: 0
     tooltip-style: "minecraft:default"
-    title: "<yellow><player_name></yellow>"
+    title: "<player_head> <yellow><player_name></yellow>"
     lore:
-      - "<gray>Health: <red><health>/20 HP"
+      - "<gray>Balance: <green>$%vault_eco_balance_formatted%"
+      - "<gray>Health: <red><health>/<max_health> HP"
       - "<gray>Ping: <green><ping>ms"

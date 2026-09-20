@@ -1,9 +1,10 @@
 name: ChatHeadTooltip
-version: 1.2.0
+version: 1.3.0
 main: com.example.chatheadtooltip.ChatHeadTooltip
 api-version: '1.21'
 author: Developer
-description: Displays customizable 9-slice player head tooltips in chat based on permissions and weight.
+description: Displays customizable 9-slice player head tooltips in chat based on permissions and weight with PAPI support.
+softdepend: [PlaceholderAPI]
 
 commands:
   chatheadtooltip:

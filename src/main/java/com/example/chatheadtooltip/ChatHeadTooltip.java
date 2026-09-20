@@ -1,10 +1,14 @@
 package com.example.chatheadtooltip;
 
 import io.papermc.paper.event.player.AsyncChatEvent;
+import me.clip.placeholderapi.PlaceholderAPI;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer;
+import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.NamespacedKey;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -29,7 +33,9 @@ public final class ChatHeadTooltip extends JavaPlugin implements Listener, Comma
 
     private final List<TooltipStyleConfig> loadedStyles = new ArrayList<>();
     private final MiniMessage miniMessage = MiniMessage.miniMessage();
+    private final GsonComponentSerializer gsonSerializer = GsonComponentSerializer.gson();
     
+    private boolean papiEnabled = false;
     private String reloadMessage;
     private String noPermissionMessage;
 
@@ -44,6 +50,12 @@ public final class ChatHeadTooltip extends JavaPlugin implements Listener, Comma
     @Override
     public void onEnable() {
         saveDefaultConfig();
+        
+        if (Bukkit.getPluginManager().isPluginEnabled("PlaceholderAPI")) {
+            papiEnabled = true;
+            getLogger().info("Successfully hooked into PlaceholderAPI!");
+        }
+
         loadConfigAndStyles();
         
         getServer().getPluginManager().registerEvents(this, this);
@@ -70,14 +82,13 @@ public final class ChatHeadTooltip extends JavaPlugin implements Listener, Comma
                 String permission = styleSection.getString("permission", "");
                 int weight = styleSection.getInt("weight", 0);
                 String tooltipStyle = styleSection.getString("tooltip-style", "minecraft:default");
-                String title = styleSection.getString("title", "<yellow><player_name>");
+                String title = styleSection.getString("title", "<player_head> <yellow><player_name>");
                 List<String> lore = styleSection.getStringList("lore");
 
                 loadedStyles.add(new TooltipStyleConfig(permission, weight, tooltipStyle, title, lore));
             }
         }
 
-        // Sort descending by weight so highest weight is evaluated first
         loadedStyles.sort(Comparator.comparingInt(TooltipStyleConfig::weight).reversed());
     }
 
@@ -115,6 +126,53 @@ public final class ChatHeadTooltip extends JavaPlugin implements Listener, Comma
         return null;
     }
 
+    /**
+     * Constructs vanilla's native player text component: {"player": {"name": "..."}}
+     */
+    private Component createPlayerHeadComponent(Player player) {
+        String json = "{\"player\":{\"name\":\"" + player.getName() + "\"}}";
+        return gsonSerializer.deserialize(json);
+    }
+
+    private Component parseAndBuildComponent(String text, Player player) {
+        double maxHealth = 20.0;
+        if (player.getAttribute(Attribute.GENERIC_MAX_HEALTH) != null) {
+            maxHealth = player.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue();
+        }
+
+        // 1. Internal text replacements
+        String parsed = text
+                .replace("<player_name>", player.getName())
+                .replace("<health>", String.valueOf((int) player.getHealth()))
+                .replace("<max_health>", String.valueOf((int) maxHealth))
+                .replace("<ping>", String.valueOf(player.getPing()))
+                .replace("<world>", player.getWorld().getName());
+
+        // 2. Parse PlaceholderAPI placeholders if present
+        if (papiEnabled) {
+            parsed = PlaceholderAPI.setPlaceholders(player, parsed);
+        }
+
+        // 3. Replace <player_head> with the native vanilla player JSON component
+        if (parsed.contains("<player_head>")) {
+            String[] parts = parsed.split("<player_head>", -1);
+            Component result = Component.empty();
+            Component headComponent = createPlayerHeadComponent(player);
+
+            for (int i = 0; i < parts.length; i++) {
+                if (!parts[i].isEmpty()) {
+                    result = result.append(miniMessage.deserialize(parts[i]));
+                }
+                if (i < parts.length - 1) {
+                    result = result.append(headComponent);
+                }
+            }
+            return result;
+        }
+
+        return miniMessage.deserialize(parsed);
+    }
+
     @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = true)
     public void onAsyncChat(AsyncChatEvent event) {
         Player player = event.getPlayer();
@@ -128,6 +186,7 @@ public final class ChatHeadTooltip extends JavaPlugin implements Listener, Comma
         if (meta != null) {
             meta.setOwningPlayer(player);
 
+            // Apply custom 9-slice tooltip style component
             if (!activeStyle.tooltipStyleKey().isBlank()) {
                 NamespacedKey styleKey = NamespacedKey.fromString(activeStyle.tooltipStyleKey());
                 if (styleKey != null) {
@@ -135,23 +194,20 @@ public final class ChatHeadTooltip extends JavaPlugin implements Listener, Comma
                 }
             }
 
-            String formattedTitle = activeStyle.titleFormat().replace("<player_name>", player.getName());
-            meta.displayName(miniMessage.deserialize(formattedTitle));
+            // Title
+            meta.displayName(parseAndBuildComponent(activeStyle.titleFormat(), player));
 
+            // Lore
             List<Component> loreComponents = new ArrayList<>();
             for (String line : activeStyle.loreFormat()) {
-                String parsedLine = line
-                        .replace("<player_name>", player.getName())
-                        .replace("<health>", String.valueOf((int) player.getHealth()))
-                        .replace("<ping>", String.valueOf(player.getPing()))
-                        .replace("<world>", player.getWorld().getName());
-                loreComponents.add(miniMessage.deserialize(parsedLine));
+                loreComponents.add(parseAndBuildComponent(line, player));
             }
             meta.lore(loreComponents);
 
             headItem.setItemMeta(meta);
         }
 
+        // Attach hover event to chat renderer
         event.renderer((source, sourceDisplayName, message, viewer) -> {
             Component nameWithHover = sourceDisplayName.hoverEvent(headItem.asHoverEvent());
             return Component.text()

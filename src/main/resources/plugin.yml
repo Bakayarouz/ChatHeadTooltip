@@ -1,0 +1,17 @@
+name: ChatHeadTooltip
+version: 1.2.0
+main: com.example.chatheadtooltip.ChatHeadTooltip
+api-version: '1.21'
+author: Developer
+description: Displays customizable 9-slice player head tooltips in chat based on permissions and weight.
+
+commands:
+  chatheadtooltip:
+    description: Main command for ChatHeadTooltip
+    aliases: [cht]
+    permission: chatheadtooltip.admin
+
+permissions:
+  chatheadtooltip.admin:
+    description: Allows reloading the plugin configuration
+    default: op
